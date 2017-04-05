@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/MheePlayground.iml" filepath="$PROJECT_DIR$/MheePlayground.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/rx_realm/rx_realm.iml" filepath="$PROJECT_DIR$/rx_realm/rx_realm.iml" />
+      <module fileurl="file://$PROJECT_DIR$/spring_animation/spring_animation.iml" filepath="$PROJECT_DIR$/spring_animation/spring_animation.iml" />
+    </modules>
+  </component>
+</project>
