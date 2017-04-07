@@ -24,7 +24,7 @@ class DataRepository (val realmFactory: RealmFactory) {
         return realm.transactionAsync<T> { data -> insertFunction(data) }
     }
 
-    inline fun <reified T : RealmObject> get(crossinline queryFunction: (Realm) -> RealmResults<T>): Flowable<T> {
+    inline fun <reified T : RealmObject> getAndObserveInsert(crossinline queryFunction: (Realm) -> RealmResults<T>): Flowable<T> {
         return queryFunction(realm).observeInsert()
     }
 
