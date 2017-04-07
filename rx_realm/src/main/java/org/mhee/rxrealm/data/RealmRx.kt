@@ -9,7 +9,7 @@ import io.realm.Realm
 import io.realm.RealmObject
 import io.realm.RealmResults
 
-val TAG:String = "RealmRx"
+val TAG: String = "RealmRx"
 inline fun <reified T : RealmObject> Realm.transactionAsync(crossinline insertFunction: (T) -> Unit): Completable {
     return Completable.create {
         emitter ->
@@ -30,37 +30,56 @@ inline fun <reified T : RealmObject> Realm.transactionAsync(crossinline insertFu
 
 inline fun <reified T : RealmObject> Realm.transaction(crossinline insertFunction: (T) -> Unit): Completable {
     return Completable.fromCallable {
-        executeTransaction{ realm ->
+        executeTransaction { realm ->
             insertFunction(realm.createObject(T::class.java))
         }
         println("Realm.transaction complete")
     }
 }
 
+inline fun <reified T : RealmObject> RealmResults<T>.asFlowable(): Flowable<T> {
+    return Flowable.create({
+        emitter ->
+        Log.v(TAG, "start asFlowable with result count: $size")
+        for (result in this) {
+            if (!emitter.isCancelled) {
+                Log.v(TAG, "emit stored result (not live): $result")
+                emitter.onNext(result)
+            }
+        }
+        emitter.onComplete()
+    }, BackpressureStrategy.BUFFER)
+}
+
 inline fun <reified T : RealmObject> RealmResults<T>.observeInsert(): Flowable<T> {
     return Flowable.create({
         emitter ->
-        Log.v(TAG, "start observeInsert with result count: $size")
-        for (result in this) {
-            Log.v(TAG, "emit stored result (not live): $result")
-            emitter.onNext(result)
-        }
-
-        val callback = OrderedRealmCollectionChangeListener<RealmResults<T>> {
-            realmResult, changeSet ->
-            Log.v(TAG, "receive changeSet: $changeSet")
-            for(range in changeSet.insertionRanges){
-                val lastInsertIndex = range.startIndex + range.length - 1
-                for(insetIndex in range.startIndex..lastInsertIndex){
-                    Log.d(TAG, "emit new inserted result: ${realmResult[insetIndex]}")
-                    emitter.onNext(realmResult[insetIndex])
+        try {
+            if (!emitter.isCancelled) {
+                val callback = createChangeListener { emitter.onNext(it) }
+                Log.v(TAG, "addChangeListener")
+                addChangeListener(callback)
+                emitter.setCancellable {
+                    Log.v(TAG, "removeChangeListener")
+                    removeChangeListener(callback)
                 }
             }
-        }
-        addChangeListener(callback)
-        emitter.setCancellable {
-            Log.v("Realm", "remove change listener")
-            removeChangeListener(callback)
+        } catch (ex: Exception) {
+            emitter.onError(ex)
         }
     }, BackpressureStrategy.BUFFER)
+}
+
+inline fun <reified T : RealmObject> RealmResults<T>.createChangeListener(crossinline insertCallback: (T) -> Unit): OrderedRealmCollectionChangeListener<RealmResults<T>> {
+    return OrderedRealmCollectionChangeListener {
+        realmResult, changeSet ->
+        Log.v(TAG, "receive changeSet: $changeSet")
+        for (range in changeSet.insertionRanges) {
+            val lastInsertIndex = range.startIndex + range.length - 1
+            for (insetIndex in range.startIndex..lastInsertIndex) {
+                Log.d(TAG, "emit new inserted result: ${realmResult[insetIndex]}")
+                insertCallback(realmResult[insetIndex])
+            }
+        }
+    }
 }
