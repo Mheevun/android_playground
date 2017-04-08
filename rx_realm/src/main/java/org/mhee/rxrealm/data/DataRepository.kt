@@ -14,7 +14,10 @@ class DataRepository (val realmFactory: RealmFactory) {
         val realmInsert = realmFactory.createRealm()
         return realmInsert
                 .transaction<T> { data -> insertFunction(data) }
-                .doOnTerminate { realmInsert.close() }
+                .doOnTerminate {
+                    println("close realm insert")
+                    realmInsert.close()
+                }
     }
 
     inline fun <reified T : RealmObject> insertAsync(crossinline insertFunction: (T) -> Unit): Completable {

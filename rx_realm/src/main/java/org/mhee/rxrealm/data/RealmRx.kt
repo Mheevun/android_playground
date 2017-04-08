@@ -4,6 +4,7 @@ import android.util.Log
 import io.reactivex.BackpressureStrategy
 import io.reactivex.Completable
 import io.reactivex.Flowable
+import io.reactivex.android.MainThreadDisposable
 import io.realm.OrderedRealmCollectionChangeListener
 import io.realm.Realm
 import io.realm.RealmObject
@@ -56,13 +57,20 @@ inline fun <reified T : RealmObject> RealmResults<T>.observeInsert(): Flowable<T
         emitter ->
         try {
             if (!emitter.isCancelled) {
-                val callback = createChangeListener { emitter.onNext(it) }
+                val callback = createChangeListener {
+                    emitter.onNext(it)
+                }
                 Log.v(TAG, "addChangeListener")
                 addChangeListener(callback)
                 emitter.setCancellable {
                     Log.v(TAG, "removeChangeListener")
                     removeChangeListener(callback)
                 }
+                emitter.setDisposable(object: MainThreadDisposable() {
+                    override fun onDispose() {
+                        removeChangeListener(callback)
+                    }
+                })
             }
         } catch (ex: Exception) {
             emitter.onError(ex)
